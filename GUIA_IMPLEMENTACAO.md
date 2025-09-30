@@ -32,7 +32,7 @@ O widget é composto por:
 src/
 ├── components/
 │   ├── ChatWidget.tsx          # Componente principal do widget
-│   └── ui/                     # Componentes UI (Button, Input)
+│   └── ui/                     # Componentes UI (Button, Textarea)
 ├── lib/
 │   └── utils.ts                # Utilitários (função cn para classes)
 └── pages/
@@ -53,7 +53,7 @@ npm install lucide-react clsx tailwind-merge
 
 ```bash
 npx shadcn-ui@latest init
-npx shadcn-ui@latest add button input
+npx shadcn-ui@latest add button textarea
 ```
 
 ### Configuração do Tailwind CSS (se não estiver configurado):
@@ -78,7 +78,7 @@ Este arquivo contém a função `cn()` que é usada para combinar classes CSS do
 Se não estiver usando shadcn/ui, crie os componentes básicos:
 
 - **Button**: Use o código disponível em [`codigos/button.tsx`](codigos/button.tsx)
-- **Input**: Use o código disponível em [`codigos/input.tsx`](codigos/input.tsx)
+- **Textarea**: Use o código disponível em [`codigos/textarea.tsx`](codigos/textarea.tsx)
 
 Coloque estes arquivos em `src/components/ui/`
 
@@ -303,7 +303,7 @@ Veja o exemplo completo em: [`codigos/exemplo-analytics.tsx`](codigos/exemplo-an
 
 - [ ] Instalar dependências necessárias
 - [ ] Criar arquivo `utils.ts` com função cn()
-- [ ] Criar componentes UI básicos (Button, Input)
+- [ ] Criar componentes UI básicos (Button, Textarea)
 - [ ] Criar componente ChatWidget.tsx
 - [ ] Personalizar constantes (WEBHOOK_URL, WHATSAPP_NUMBER, etc.)
 - [ ] Personalizar cores e estilos
@@ -316,6 +316,90 @@ Veja o exemplo completo em: [`codigos/exemplo-analytics.tsx`](codigos/exemplo-an
 - [ ] Testar responsividade mobile
 - [ ] Configurar CORS se necessário
 - [ ] Adicionar analytics (opcional)
+
+---
+
+## 🆕 Funcionalidades Implementadas
+
+### **1. Textarea com Redimensionamento Automático**
+
+O widget agora utiliza um `<textarea>` ao invés de um `<input>` para permitir que os usuários escrevam mensagens maiores. O textarea se ajusta automaticamente à altura do conteúdo:
+
+```typescript
+// Referência para o textarea
+const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+// Efeito que ajusta a altura automaticamente
+useEffect(() => {
+  if (textareaRef.current) {
+    textareaRef.current.style.height = 'auto';
+    textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+  }
+}, [inputValue]);
+```
+
+**Características:**
+- Altura mínima de 1 linha
+- Altura máxima de 32 unidades (max-h-32)
+- Redimensiona automaticamente conforme o usuário digita
+- Suporta quebra de linha com Shift + Enter
+- Enter sem Shift envia a mensagem
+
+### **2. Separação de Mensagens do Bot**
+
+O bot agora divide suas respostas longas em múltiplas mensagens quando houver quebras de parágrafo (\n\n):
+
+```typescript
+// Divide a resposta em múltiplas mensagens quando houver \n\n
+const messageParts = fullResponse
+  .split('\n\n')
+  .map((part: string) => part.trim())
+  .filter((part: string) => part.length > 0);
+
+// Adiciona as mensagens sequencialmente com delay entre elas
+messageParts.forEach((part: string, index: number) => {
+  const botMessage: Message = {
+    id: `${Date.now() + index + 1}`,
+    text: part,
+    sender: 'bot',
+    timestamp: new Date(Date.now() + index * 100)
+  };
+
+  setTimeout(() => {
+    setMessages(prev => [...prev, botMessage]);
+    if (index === messageParts.length - 1) {
+      setIsTyping(false);
+    }
+  }, 1500 + (index * 800));
+});
+```
+
+**Características:**
+- Resposta dividida em múltiplas bolhas de mensagem
+- Delay de 800ms entre cada mensagem para simular digitação natural
+- Melhora a legibilidade de respostas longas
+- Cria uma experiência mais conversacional
+
+**Exemplo de uso no backend:**
+
+```javascript
+// A resposta com \n\n será dividida automaticamente
+response.json({
+  response: "Olá! Bem-vindo ao nosso chat.\n\nComo posso ajudar você hoje?\n\nTemos várias opções disponíveis."
+});
+```
+
+Isso resultará em 3 mensagens separadas:
+1. "Olá! Bem-vindo ao nosso chat."
+2. "Como posso ajudar você hoje?"
+3. "Temos várias opções disponíveis."
+
+### **3. Melhorias na UX**
+
+- **Scroll automático**: O chat rola automaticamente para a última mensagem
+- **Indicador de digitação**: Animação de "..." enquanto o bot processa a resposta
+- **Desabilitar input**: O textarea fica desabilitado enquanto o bot está digitando
+- **Timestamps**: Cada mensagem exibe o horário de envio
 
 ---
 
